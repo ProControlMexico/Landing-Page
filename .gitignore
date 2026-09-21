@@ -1,0 +1,10 @@
+# Carpeta local de depuración (archivos sin uso, no se publica)
+_depuracion/
+
+# Archivos del sistema operativo / Google Drive
+desktop.ini
+Thumbs.db
+.DS_Store
+
+# Herramientas locales de prueba
+.playwright-mcp/
