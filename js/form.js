@@ -79,12 +79,28 @@ window.handleFormSubmit = async function handleFormSubmit(event) {
   const telefono = phoneDigits;
   const giro = document.getElementById('giro').value;
   const proveedor = document.getElementById('proveedor').value;
+  const servicio = document.getElementById('servicio').value;
   const modal = document.getElementById('successModal');
   const feedback = document.getElementById('modalUserFeedback');
 
+  // Cetrería / Control Aviar: datos del caso de aves (solo si el servicio lo incluye)
+  const aviar = ['Control Aviar', 'Ambos'].includes(servicio) ? {
+    tipo: document.getElementById('aveTipo').value,
+    poblacion: document.getElementById('avePoblacion').value,
+    area: document.getElementById('aveArea').value,
+    problema: document.getElementById('aveProblema').value,
+    metodo: document.getElementById('aveMetodo').value,
+    urgencia: document.getElementById('aveUrgencia').value
+  } : null;
+  const tipoLead = { 'Control de Plagas (MIP)': 'AXIS', 'Control Aviar': 'Control Aviar', 'Ambos': 'AXIS + Control Aviar' }[servicio] || 'AXIS';
+  const notasAviar = aviar
+    ? `Ave: ${aviar.tipo} | Cantidad: ${aviar.poblacion} | Zona: ${aviar.area} | Problema: ${aviar.problema} | Métodos previos: ${aviar.metodo} | Urgencia: ${aviar.urgencia}`
+    : 'N/A';
+
   const payload = {
     fecha_hora: new Date().toISOString(),
-    tipo_lead: 'AXIS',
+    tipo_lead: tipoLead,
+    servicio_interes: servicio,
     empresa: empresa || 'N/A',
     responsable: nombre || 'N/A',
     puesto: puesto || 'N/A',
@@ -97,11 +113,22 @@ window.handleFormSubmit = async function handleFormSubmit(event) {
     calificacion_generales: 'N/A',
     fallas_criticas: 'N/A',
     fallas_generales: 'N/A',
-    notas: 'N/A',
+    notas: notasAviar,
     aviso_privacidad: privacyAccepted ? 'Aceptado' : 'No aceptado'
   };
 
-  const whatsappText = `Hola, vi el reel de AXIS y me interesa más información.\n\n*Nombre:* ${nombre}\n*Puesto:* ${puesto}\n*Empresa:* ${empresa}\n*Sector:* ${giro}\n*Ubicación:* ${ubicacion}\n*Teléfono:* ${telefono}\n*Correo:* ${correo || 'No proporcionado'}\n*Actualmente cuenta con servicio:* ${proveedor || 'No especificado'}\n*Procedencia:* AXIS Landing\n\nQuiero agendar un diagnóstico y conocer cómo AXIS puede apoyar a mi operación.`;
+  const soloAviar = servicio === 'Control Aviar';
+  const saludo = soloAviar
+    ? 'Hola, me interesa el servicio de Control Aviar.'
+    : 'Hola, vi el reel de AXIS y me interesa más información.';
+  const detalleAviar = aviar
+    ? `\n\n*— Caso de aves —*\n*Tipo de ave:* ${aviar.tipo}\n*Cantidad aprox.:* ${aviar.poblacion}\n*Zona afectada:* ${aviar.area}\n*Problema principal:* ${aviar.problema}\n*Métodos probados:* ${aviar.metodo}\n*Urgencia:* ${aviar.urgencia}`
+    : '';
+  const cierre = soloAviar
+    ? 'Quiero agendar un diagnóstico especializado de control aviar.'
+    : 'Quiero agendar un diagnóstico y conocer cómo AXIS puede apoyar a mi operación.';
+
+  const whatsappText = `${saludo}\n\n*Servicio de interés:* ${servicio}\n*Nombre:* ${nombre}\n*Puesto:* ${puesto}\n*Empresa:* ${empresa}\n*Sector:* ${giro}\n*Ubicación:* ${ubicacion}\n*Teléfono:* ${telefono}\n*Correo:* ${correo || 'No proporcionado'}\n*Actualmente cuenta con servicio:* ${proveedor || 'No especificado'}${detalleAviar}\n*Procedencia:* AXIS Landing\n\n${cierre}`;
 
   // Sin await: window.open debe ir dentro del gesto del usuario o el navegador lo bloquea.
   // El fetch usa keepalive, así que sobrevive aunque la página navegue a WhatsApp.
@@ -144,5 +171,31 @@ window.addEventListener('DOMContentLoaded', () => {
     puestoSelect.form.addEventListener('reset', () => setTimeout(togglePuestoOtro, 0));
     // el navegador puede restaurar el select (recarga / botón atrás) sin disparar "change"
     togglePuestoOtro();
+  }
+
+  // Cetrería / Control Aviar: muestra y exige los campos del caso solo para Control Aviar o Ambos
+  const servicioSelect = document.getElementById('servicio');
+  const aviarFields = document.getElementById('aviarFields');
+
+  if (servicioSelect && aviarFields) {
+    const toggleAviarFields = () => {
+      const show = ['Control Aviar', 'Ambos'].includes(servicioSelect.value);
+      aviarFields.classList.toggle('hidden', !show);
+      aviarFields.querySelectorAll('[data-aviar]').forEach((field) => {
+        field.required = show;
+        if (!show) field.selectedIndex = 0;
+      });
+    };
+
+    servicioSelect.addEventListener('change', toggleAviarFields);
+    servicioSelect.form.addEventListener('reset', () => setTimeout(toggleAviarFields, 0));
+    // los botones con data-servicio (p. ej. "Solicitar Diagnóstico Especializado") preseleccionan el servicio
+    document.querySelectorAll('[data-servicio]').forEach((link) => {
+      link.addEventListener('click', () => {
+        servicioSelect.value = link.dataset.servicio;
+        toggleAviarFields();
+      });
+    });
+    toggleAviarFields();
   }
 });
